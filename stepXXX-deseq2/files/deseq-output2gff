@@ -1,0 +1,147 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Getopt::Std;
+
+our $opt_h = 0;
+our $opt_n = 0;
+our $opt_p = -1;
+our $opt_q = -1;
+
+sub usage {
+  print STDERR "Usage: $0 [options] SEQNAME FOLD-CUTOFF < results.txt > results.gff\n";;
+  print STDERR "-h - this message\n";
+  print STDERR "-n - suppress notes field\n";
+  print STDERR "-p VAL - include only p-value<=VAL\n";
+  print STDERR "-q VAL - include only q-value<=VAL\n";
+  exit(@_);
+}
+
+my $stat = getopts('nhp:q:');
+if (!$stat) {
+  usage(1);
+}
+if ( $opt_h ) {
+  usage();
+}
+if ( $#ARGV == -1 ) {
+  usage(1);
+}
+
+my ($seqname, $fold_cutoff) = @ARGV;
+if ( !defined($fold_cutoff) ) {
+  usage(1);
+}
+
+sub log2 {
+  my $n = shift;
+  return log($n)/log(2);
+}
+
+my $source;
+my $feature = "misc_difference";
+my $frame = ".";
+
+my $version;
+
+while (<STDIN>) {
+  chomp;
+  my @fields = split("\t");
+  if ( $fields[0] eq '"id"' || $fields[0] eq 'id' ) {
+    $version = 1;
+    $source = "DESeq";
+    next;
+  } elsif ( $fields[0] eq '"baseMean"' || $fields[0] eq 'baseMean' ) {
+    $version = 2;
+    $source = "DESeq2";
+    next;
+  }
+  (defined($version)) || die "Cannot determine version of DESeq";
+
+  my ($num, $id, $baseMean, $baseMeanA, $baseMeanB, $foldChange,
+      $log2FoldChange, $pval, $padj,$lfcSE, $stat );
+  if ( $version == 1 ) {
+    ($num, $id, $baseMean, $baseMeanA, $baseMeanB, $foldChange,
+     $log2FoldChange, $pval, $padj, ) = @fields;
+  } elsif ( $version == 2 ) {
+    ($id, $baseMean, $log2FoldChange, $lfcSE, $stat, $pval, $padj)
+      = @fields;
+    if ( $log2FoldChange eq "NA" ) {
+      $foldChange = "NA";
+    } else {
+      $foldChange = 2**$log2FoldChange;
+    }
+  } else {
+    die;
+  }
+
+  if ( $id eq "NA" ) {
+    next;
+  }
+  if ( $opt_p >= 0 && ( $pval eq "NA" || $pval > $opt_p ) ) {
+    next;
+  }
+  if ( $opt_q >= 0 && ( $padj eq "NA" || $padj > $opt_q ) ) {
+    next;
+  }
+
+  ( $id =~ /"?([0-9]+)\.\.([0-9]+)\/([+-])(\((.*)\))?"?/ ) || die "id=$id\n";
+  my ($start,$end,$strand,$name) = ($1,$2,$3,$5);
+  my $score = $padj;
+  my $colour;
+  if ( $log2FoldChange eq "NA" ) {
+    $colour = 14		# black
+  } elsif ( $log2FoldChange eq "Inf" || $fold_cutoff <= $foldChange ) {
+    $colour = 3;		# green
+  } elsif ( $log2FoldChange eq "-Inf" || $foldChange <= 1/$fold_cutoff  ) {
+    $colour = 2;		# red
+  } else {
+    $colour = 13;		# gray
+  }
+
+  my @attributes = ();
+  my @notes = ();
+
+  if ( defined($name) ) {
+    push @attributes, "name \"$name\"";
+  }
+
+  push @attributes, "colour $colour";
+
+  push @attributes, "baseMean $baseMean";
+
+  if (defined($baseMeanA)) {
+    push @attributes, "baseMeanA $baseMeanA";
+  }
+  if (defined($baseMeanB)) {
+    push @attributes, "baseMeanB $baseMeanB";
+  }
+  if (defined($foldChange)) {
+    push @attributes, "foldChange $foldChange";
+    push @notes, "foldChange ".(($foldChange eq "NA") ? $foldChange : sprintf("%.4g", $foldChange));
+  }
+
+  push @attributes, "log2FoldChange $log2FoldChange";
+
+  if (defined($lfcSE)) {
+    push @attributes, "lfcSE $lfcSE";
+  }
+  if (defined($stat)) {
+    push @attributes, "stat $stat";
+  }
+
+  push @attributes, "pval $pval";
+  push @notes, "pval ".(($pval eq "NA") ? $pval : sprintf("%.4g", $pval));
+
+  push @attributes, "padj $padj";
+  push @notes, "padj ".(($padj eq "NA") ? $padj : sprintf("%.4g", $padj));
+  if ( !$opt_n ) {
+    unshift @attributes, sprintf("note \"%s\"", join(", ", @notes));
+  }
+ 
+  my $attributes = join("; ",@attributes);
+  print join("\t",$seqname,$source,$feature,$start,$end,$score,
+	     $strand,$frame,$attributes),"\n";
+}

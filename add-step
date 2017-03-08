@@ -1,0 +1,38 @@
+#! /bin/bash
+
+set -e
+
+BASE=`dirname $0`
+
+function usage {
+    echo 1>&2 "Usage: $0 N COMPONENT_NAME"
+    echo 1>&2 "Usage: $0 (-l|-h)"
+    exit "$@"
+}
+
+if [ "$1" = "-h" ] ; then
+    usage
+elif [ "$1" = "-l" ] ; then
+    (
+	cd $BASE
+	ls -d stepXXX-* | sed -e 's/^stepXXX-//'
+    )
+elif [ "$2" ] ; then
+    N="$1" ; shift 1
+    C="$1" ; shift 1
+    if [ ! -e $BASE/stepXXX-${C} ] ; then
+	echo 1>&2 "Component '${C}' does not exist."
+	echo 1>&2 "Use -l for a list of available components."
+	exit 1
+    fi
+    (
+	if [ ! -e ./howto ] ; then
+	    echo cp --archive $BASE/howto .
+	fi
+	SRC=$BASE/stepXXX-${C}
+	TRG=`basename $SRC | sed -e 's/^stepXXX-/step'${N}'-/'`
+	echo cp --archive "$SRC" "$TRG"
+    ) | bash -x
+else
+    usage 1
+fi

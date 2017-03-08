@@ -1,0 +1,10 @@
+#! /bin/bash
+
+if [ -z "$1" -o "$2" ] ; then
+    echo 1>&2 "Usage cat foo.gff | $0 name_field > genes.txt"
+    exit 1
+fi
+
+sed -e 's/ID=.*;'$1'=\([^;]*\)/\1/' -e 's/;.*//' \
+    | gawk 'BEGIN { FS=OFS="\t" } {print $9,$5-$4+1 }' \
+    | sort \

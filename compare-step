@@ -1,0 +1,64 @@
+#! /bin/bash
+
+set -e
+
+BASE=`dirname $0`
+
+function usage {
+    echo 1>&2 "Usage: $0 [options] COMPONENT_NAME LOCAL_NAME"
+    echo 1>&2 "-h - this message"
+    echo 1>&2 "-r - commands to refresh the local copy"
+    echo 1>&2 "-u - commands to update the global copy (use wisely!)"
+    exit "$@"
+}
+
+while getopts 'hru' opt ; do
+    case "$opt" in
+	h) opt_h=1 ;;
+	r) opt_r=1 ;;
+	u) opt_u=1 ;;
+	\?) usage 1 ;;
+	*) echo "Can't happen" ; exit 1 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ "$opt_h" ] ; then
+    usage
+fi
+
+if [ -z "$2" -o "$3" ] ; then
+    usage 1
+fi
+
+C="$1" ; shift 1
+L="$1" ; shift 1
+if [ ! -e $BASE/stepXXX-${C} ] ; then
+    echo 1>&2 "Component '${C}' does not exist."
+    exit 1
+fi
+L+=/files
+if [ ! -d "$L" ] ; then
+    echo 1>&2 "$L does not exist."
+    exit 1
+fi
+U=$BASE/stepXXX-${C}/files
+(
+    if [ "$opt_u" ] ; then
+	diff -ruq $L $U
+    else
+	diff -ruq $U $L
+    fi
+) | (
+    if [ "$opt_r" ] ; then
+	sed -r -e 's/^Files (.*) and (.*) differ$/cp --archive --force \1 \2/' \
+	    | sed -r -e 's|^Only in '$L': (.*)|rm --force '$L/'\1|' \
+	    | sed -r -e 's|^Only in '$U': (.*)|cp --archive --force '$U'/\1 '$L'/\1|'
+    elif [ "$opt_u" ] ; then
+	sed -r -e 's/^Files (.*) and (.*) differ$/cp --archive --force \1 \2/' \
+	    | sed -r -e 's|^Only in '$L': (.*)|cp --archive --force '$L'/\1 '$U'/\1|' \
+	    | sed -r -e 's|^Only in '$U': (.*)|rm --force '$U/'\1|'
+    else
+	cat
+    fi
+)

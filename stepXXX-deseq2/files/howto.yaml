@@ -1,0 +1,8 @@
+---
+image: pvstodghill/deseq2
+version: 1.14.1__2017-01-02
+commands: [ Rscript ]
+
+# ---
+# direct: true
+# commands: [ Rscript ]

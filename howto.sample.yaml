@@ -1,0 +1,15 @@
+---
+image: pvstodghill/searchgui
+version: 3.2.6__2017-02-01
+gui: false
+commands:
+  - FastaCLI: { java: true }
+  - IdentificationParametersCLI: { java: true }
+  - PathSettingsCLI: { java: true }
+  - SearchCLI: { java: true }
+  - SearchGUI: { gui: true, java: true }
+---
+image: jess/firefox
+gui: true
+implicit: true
+command: firefox

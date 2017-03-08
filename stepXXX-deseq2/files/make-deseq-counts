@@ -1,0 +1,305 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+use Getopt::Std;
+
+# ------------------------------------------------------------------------
+
+our $opt_L;
+our $opt_a;
+our $opt_f = 0;
+our $opt_h = 0;
+our $opt_l = 0;
+our $opt_m;
+our $opt_n = 0;
+our $opt_o = 0;
+our $opt_q = 0;
+our $opt_r = 0;
+our $opt_s = 0;
+our $opt_u = 0;
+
+if (!getopts("La:fhlnm:orsqu")) {
+  usage(1);
+}
+
+sub usage {
+  print STDERR "Usage: cat FEATURES.gff | $0 [options] tag1:file1.profile tag2:file2.profile ...\n";
+  print STDERR "-L - do not use gene name, just locus tag\n";
+  print STDERR "-a STR - Add the prefix STR to region names\n";
+  print STDERR "-f - for tag use feature kind instead of location\n";
+  print STDERR "-h - print this message\n";
+  print STDERR "-l - use log10(1+value) instead of value\n";
+  print STDERR "-n - normalize (average) for length\n";
+  print STDERR "-m MAPPABLE.profile - Use MAPPABLE.profile with -n or -r\n";
+  print STDERR "-o - opposite strand.\n";
+  print STDERR "-r - compute RKPM\n";
+  print STDERR "-s - ignore strand (count both strands)\n";
+  print STDERR "-q - quiet. suppress info messages.\n";
+  print STDERR "-u - add unmatched read count to end of table\n";
+  exit(@_);
+}
+
+if ($opt_h) {
+  usage();
+}
+
+if ( $opt_n && $opt_r ) {
+  print STDERR "-n and -r are mutually exclusive.\n";
+  usage(1);
+}
+
+if ( $opt_n && $opt_u ) {
+  print STDERR "-n and -u are mutually exclusive.\n";
+  usage(1);
+}
+if ( $opt_r && $opt_u ) {
+  print STDERR "-r and -u are mutually exclusive.\n";
+  usage(1);
+}
+
+
+# ------------------------------------------------------------------------
+# Read the region from STDIN. Sort the regions by lexi order
+# ------------------------------------------------------------------------
+
+
+# ( [start,end,strand,name,length,entry0,...], ...)
+my @regions;
+my $_start = 0;
+my $_end = 1;
+my $_strand = 2;
+my $_name = 3;
+my $_length = 4;
+my $_entry0 = 5;
+
+
+while (<STDIN>) {
+  if (/^#/) {
+    next;
+  }
+  chomp;
+  my ($seqname,$source,$feature,$start,$end,$score,
+      $strand,$frame,$attributes,$comments) = split(/\t/,$_);
+  ( $start <= $end ) || die;
+  if ($opt_s) {
+    $strand = ".";
+  }
+  if ($opt_o) {
+    if ( $strand eq "+" ) {
+      $strand = "-";
+    } elsif ( $strand eq "-" ) {
+      $strand = "+";
+    }
+  }
+  my $name = "";
+  if ( $opt_f ) {
+    $name = $feature;
+  } else {
+    my $locus_tag;
+    if ($attributes =~ /(^|;)locus_tag=([^;]+)/) {
+      $locus_tag = $2;
+    }
+    my $gene_name;
+    if ($attributes =~ /(^|;)Name=([^;]+)/) {
+      $gene_name = $2;
+    }
+    if ( $opt_L ) {
+      if (defined($locus_tag)) {
+	$name = $locus_tag;
+      }
+    } elsif (defined($locus_tag) && defined($gene_name)) {
+      if ($locus_tag eq $gene_name) {
+	$name = $locus_tag;
+      } else {
+	$name = join("/",$locus_tag,$gene_name);
+      }
+    } elsif (defined($locus_tag)) {
+      $name = $locus_tag;
+    } elsif (defined($gene_name)) {
+      $name = $gene_name;
+    }
+  }
+  push @regions, [$start,$end,$strand,$name];
+}
+
+@regions = sort { ${$a}[0] <=> ${$b}[0]
+		    || ${$a}[1] <=> ${$b}[1] 
+		    || ${$a}[2] cmp ${$b}[2] 
+		  } @regions;
+
+# ------------------------------------------------------------------------
+# For each profile, read the profile and count the values for each
+# region. Each region count added to the right-side of each region
+# entry.
+# ------------------------------------------------------------------------
+
+if ( $opt_m ) {
+  read_profile($opt_m);
+} else {
+  count_lengths();
+}
+
+my @library_size;
+my @unmatched_reads;
+
+my @tags;
+foreach my $tag_profile ( @ARGV ) {
+  my ($tag,@profile) = split(/:/,$tag_profile);
+  my $profile = join(":",@profile);
+  if ( $profile eq "" ) {
+    print STDERR "Missing profile name. Did you forget to tag the profiles?\n";
+    exit(1);
+  }
+  push @tags, $tag;
+  my ($total_reads,$matched_reads) = read_profile($profile);
+  push @library_size, $total_reads;
+  push @unmatched_reads, $total_reads-$matched_reads;
+}
+
+# ------------------------------------------------------------------------
+# Subroutine to compute region lengths
+# ------------------------------------------------------------------------
+
+sub count_lengths {
+  foreach my $entry ( @regions ) {
+    my ($start,$end,$strand) = @$entry;
+    my $len = $end-$start+1;
+    if ( $strand eq "." ) { $len *= 2; }
+    push @$entry, $len;
+  }
+}
+
+# ------------------------------------------------------------------------
+# Subroutine for reading each profile
+# ------------------------------------------------------------------------
+
+sub read_profile {
+  my ($profile) = @_;
+  foreach my $entry ( @regions ) {
+    push @$entry, 0;
+  }
+  my $total_reads = 0;
+  my $matched_reads = 0;
+  my @current = ();
+  my @pending = @regions;
+  open(my $fh, "<$profile") || die "Cannot file file \"$profile\",";
+  my $i = 0;
+  while (<$fh>) {
+    chomp;
+    my ($p,$m) = split(" ");
+    $total_reads += $p + $m;
+    $i++;
+    # Move entries that start at $i from pending to current
+    while ($#pending >= 0 && ${$pending[0]}[0] == $i) {
+      push @current, shift @pending;
+    }
+    if ( $#current == -1 ) { next; }
+    my @still_current = ();
+    foreach my $entry ( @current ) {
+      my ($start,$end,$strand) = @$entry;
+      if ( $end < $i ) {
+	# $entry is complete no more processing
+	next;
+      } 
+      # add counts to $entry
+      if ( $strand eq "+" || $strand eq "." || $strand eq "0" ) {
+	${$entry}[-1] += $p;
+	$matched_reads += $p;
+      }
+      if ( $strand eq "-" || $strand eq "." || $strand eq "0" ) {
+	${$entry}[-1] += $m;
+	$matched_reads += $m;
+      }
+      push @still_current, $entry;
+    }
+    @current = @still_current;
+  }
+  close($fh);
+  return ($total_reads,$matched_reads);
+}
+
+
+# ------------------------------------------------------------------------
+# If requested, normalize the values
+# ------------------------------------------------------------------------
+
+if ( $opt_n ) {
+  foreach my $entry ( @regions ) {
+    my ($start,$end) = @$entry;
+    my $len = ${$entry}[$_length];
+    for (my $i=$_entry0; $i<=$#{$entry}; $i++) {
+      if ( $len == 0 ) {
+	(${$entry}[$i] == 0) || die;
+	${$entry}[$i] = "NaN";
+      } else {
+	${$entry}[$i] = ${$entry}[$i] / $len;
+      }
+    }
+  }
+}
+
+if ( $opt_r ) {
+  foreach my $entry ( @regions ) {
+    my ($start,$end) = @$entry;
+    my $len = ${$entry}[$_length];
+    for (my $i=$_entry0; $i<=$#{$entry}; $i++) {
+      my $lib_size = $library_size[$i-$_entry0];
+      if ( $len == 0 ) {
+	(${$entry}[$i] == 0) || die;
+	${$entry}[$i] = "NaN";
+      } else {
+	${$entry}[$i] = (1.0e9*${$entry}[$i]) / ($len*$lib_size);
+      }
+    }
+  }
+}
+
+
+# ------------------------------------------------------------------------
+# If requested, log transform the results
+# ------------------------------------------------------------------------
+
+if ( $opt_l ) {
+  foreach my $entry ( @regions ) {
+    for (my $i=$_entry0; $i<=$#{$entry}; $i++) {
+      ${$entry}[$i] = log10(1+${$entry}[$i]);
+    }
+  }
+  for (my $i=0; $i<=$#unmatched_reads; $i++) {
+    $unmatched_reads[$i] = log10($unmatched_reads[$i]);
+  }
+}
+
+
+# ------------------------------------------------------------------------
+# Print the results. Don't print the same region twice. Unless -f was set.
+# ------------------------------------------------------------------------
+
+my %printed;
+
+my $prefix = "";
+if ($opt_a) { $prefix = $opt_a.":"; }
+print join("\t","",@tags),"\n";
+foreach my $entry ( @regions ) {
+  my ($start,$end,$strand,$name,$length,@values) = @$entry;
+  my $str = "$prefix$start..$end/$strand";
+  if ($printed{$str} && !$opt_f) { next; }
+  $printed{$str} = 1;
+  if ( $opt_f ) {
+    $str = $name;
+  } elsif ( $name ne "" ) {
+    $str .= "($name)";
+  }
+  print join("\t",$str,@values),"\n";
+}
+if ( $opt_u ) {
+  print join("\t","*",@unmatched_reads),"\n";
+}
+
+# ------------------------------------------------------------------------
+
+sub log10 {
+  my $n = shift;
+  return log($n)/log(10);
+}

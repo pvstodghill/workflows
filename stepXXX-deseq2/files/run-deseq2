@@ -1,0 +1,67 @@
+#! /usr/bin/env Rscript
+# -*- R -*-
+
+# Vignette: http://bioconductor.org/packages/devel/bioc/vignettes/DESeq/inst/doc/DESeq.pdf
+# Tutorial here: http://cartwrightlab.wikispaces.com/DESeq
+
+# Run setup-deseq before this script
+
+args <- commandArgs(TRUE)
+if ( length(args) != 1 ) {
+  print("Usage: run-deseq params.R")
+  q()
+}
+
+pval.cutoff <- -1
+padj.cutoff <- -1
+
+print.session.info <- TRUE
+
+extended.output.filename <- FALSE
+
+source(args[1])
+
+suppressPackageStartupMessages(library("DESeq2"))
+counts <- read.table(counts.filename, header=TRUE)
+colData <- data.frame(condition=counts.conditions, row.names=colnames(counts))
+
+dds <- DESeqDataSetFromMatrix(countData = counts, colData = colData, design = ~ condition)
+dds$condition <- relevel(dds$condition, conditions.names[1])
+dds <-DESeq(dds, quiet=TRUE)
+
+# If padj.cutoff and pval.cutoff are disabled, then disable
+# independentFiltering too.
+use.independent.filtering <- !(( padj.cutoff == -1 ) && ( pval.cutoff == -1 ))
+
+res <- results(dds, independentFiltering = use.independent.filtering)
+
+if ( pval.cutoff != -1 ) {
+  res <- res[!is.na(res$pvalue) & res$pvalue <= pval.cutoff, ]
+}
+if ( padj.cutoff != -1 ) {
+  res <- res[!is.na(res$padj) & res$padj <= padj.cutoff, ]
+}
+results <- res[order(res$pvalue), ]
+
+write.table(results,output.filename,sep="\t")
+
+# ------------------------------------------------------------------------
+
+if (extended.output.filename != "FALSE") {
+    baseMeanPerLvl <- sapply( levels(dds$condition),
+                             function(lvl) rowMeans(
+                                               counts(dds,normalized=TRUE)[
+                                                  ,dds$condition == lvl] ) )
+
+    xxx <- merge(baseMeanPerLvl, results, by=0, all=FALSE)
+    yyy <- xxx[order(xxx$pvalue), ]
+
+    write.table(yyy,extended.output.filename,sep="\t",row.names=FALSE)
+
+}
+
+# ------------------------------------------------------------------------
+
+if (print.session.info) {
+    sessionInfo()
+}

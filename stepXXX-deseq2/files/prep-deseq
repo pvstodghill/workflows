@@ -1,0 +1,128 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Getopt::Std;
+use FindBin;
+
+use constant { TRUE => 1, FALSE => 0 };
+
+our $opt_c = "counts.txt";
+our $opt_d = ".";
+our $opt_f = 0.05;
+our $opt_h;
+our $opt_p = -1;
+our $opt_q = FALSE;
+our $opt_s = $FindBin::Bin;
+our $opt_t = "";
+our $opt_x;
+
+sub usage {
+  print STDERR "Usage: $0 [options] CONDITION:SAMPLE ... \n";
+  print STDERR "-c COUNTS.txt - File containing counts [counts.txt]\n";
+  print STDERR "-d DIR - Directory to contain output\n";
+  print STDERR "-f Q-CUTOFF - FDR cutoff (-1 == no cutoff) [0.05]\n";
+  print STDERR "-h - print help\n";
+  print STDERR "-p P-CUTOFF - P-value cutoff (-1 == no cutoff) [-1]\n";
+  print STDERR "-q - run quietly\n";
+  print STDERR "-s DIR - Find scripts in DIR [$FindBin::Bin]\n";
+  print STDERR "-t TAG - Add TAG suffix to all files\n";
+  print STDERR "-x - generate extended output\n";
+  exit(@_);
+}
+
+my $stat = getopts('c:d:f:hp:qr:s:t:x');
+if (!$stat) {
+  usage(1);
+}
+if ($opt_h) {
+  usage();
+}
+
+my $data_file = "$opt_d/data$opt_t.txt";
+my $params_file = "$opt_d/params$opt_t.R";
+my $output_file = "$opt_d/output$opt_t.txt";
+my $extended_output_file;
+if ($opt_x) {
+  $extended_output_file = "$opt_d/output-extended$opt_t.txt";
+}
+
+my $extract_counts = "$opt_s/extract-counts";
+
+my $run_deseq  = "$opt_s/run-deseq2";
+
+# ------------------------------------------------------------------------
+# Parse CONDITION:SAMPLE args
+# ------------------------------------------------------------------------
+
+my $q = "\"";
+
+my @names;
+my %names_seen;
+my @mdc_args;
+my @conditions;
+my @samples;
+
+foreach my $arg ( @ARGV ) {
+  my ($condition,$sample) = split(/:/, $arg);
+  if ( !defined($sample) ) {
+    print STDERR "Cannot parse arg: $arg\n";
+    usage(1);
+  }
+  if ( !$names_seen{$condition} ) {
+    push @names, $q.$condition.$q;
+    $names_seen{$condition} = 1;
+  }
+  push @conditions,$q.$condition.$q;
+  push @samples, $sample;
+}
+
+if ( scalar @names != 2 ) {
+  print STDERR "Exactly two conditions are required.\n";
+  exit(1);
+}
+
+# ------------------------------------------------------------------------
+# Make the data file
+# ------------------------------------------------------------------------
+
+my $column_args = join(" ",@samples);
+my $counts_conditions = join(",",@conditions);
+my $conditions_names = join(",",@names);
+
+my $data_file_cmd = "$extract_counts $column_args < $opt_c > $data_file";
+
+if ( !$opt_q ) {
+  print STDERR "# Making <<$data_file>>\n";
+}
+
+(system($data_file_cmd) == 0) || die "Making <<$data_file>> failed: $?,";
+
+# ------------------------------------------------------------------------
+# Make the parameter file
+# ------------------------------------------------------------------------
+
+if ( !$opt_q ) {
+  print STDERR "# Making <<$params_file>>\n";
+}
+
+open(my $pf, ">", $params_file) || die "Cannot open <<$params_file>>,";
+print $pf <<END_SCRIPT;
+counts.filename <- "$data_file"
+counts.conditions <- c($counts_conditions)
+conditions.names <- c($conditions_names)
+padj.cutoff <- $opt_f
+pval.cutoff <- $opt_p
+output.filename <- "$output_file"
+END_SCRIPT
+if ( $opt_x ) {
+  print $pf <<END_SCRIPT;
+extended.output.filename <- "$extended_output_file"
+END_SCRIPT
+}
+if ( $opt_q ) {
+  print $pf <<END_SCRIPT;
+print.session.info <- FALSE
+END_SCRIPT
+}

@@ -1,0 +1,381 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+use English;
+
+use constant { TRUE => 1, FALSE => 0 };
+
+# ------------------------------------------------------------------------
+# Read command line
+# ------------------------------------------------------------------------
+
+use File::Basename;
+use Getopt::Std;
+
+our $opt_f;
+our $opt_h;
+our $opt_l;
+our $opt_p;
+our $opt_q;
+our $opt_s;
+
+sub usage {
+  my $progname = basename($0);
+  print STDERR "Usage: $progname [options] cmd args ...\n";
+  print STDERR "Usage: $progname [options] -l\n";
+  print STDERR "Usage: $progname [options] -p cmd1 cmd2\n";
+  print STDERR "Usage: $progname [options] -p '*'\n";
+
+  print STDERR "-f FILENAME - config file [./.howto.yaml or ~/.howto.yaml]\n";
+  print STDERR "-h - print help\n";
+  print STDERR "-l - list known commands and images\n";
+  print STDERR "-p - pull packages\n";
+  print STDERR "-q - quiet. don't print disagnostics.\n";
+  print STDERR "-s - open a shell instead of running the command\n";
+
+  exit(@_);
+}
+
+my $stat = getopts('f:hlpqs');
+if (!$stat) {
+  usage(1);
+}
+if ($opt_h) {
+  usage();
+}
+
+# ------------------------------------------------------------------------
+# Read config file
+# ------------------------------------------------------------------------
+
+my $config_file;
+if ( $opt_f ) {
+  ( -r $opt_f ) || die "Cannot read <<$opt_f>>,";
+  $config_file = $opt_f;
+} else {
+  foreach my $file ( "./.howto.yaml", "$ENV{HOME}/.howto.yaml" ) {
+    if ( -r $file ) {
+      $config_file = $file;
+      last;
+    }
+  }
+}
+if ( !$config_file ) {
+  die "Cannot find config file,";
+}
+
+use YAML;
+
+my @config_elements = YAML::LoadFile($config_file);
+
+# ------------------------------------------------------------------------
+# Parse the config elements
+# ------------------------------------------------------------------------
+
+my %is_command;
+my %image_of;
+my %version_of;
+my %is_centos;
+my %is_gui;
+my %is_tty;
+my %is_java;
+my %is_implicit;
+
+foreach my $x ( @config_elements ) {
+  my $ref_type = ref $x;
+  if ( !$ref_type ) {
+    die "Unexpected scalar element: <<$x>>,";
+  } elsif ( $ref_type eq "HASH" ) {
+    # nothing
+  } else {
+    die "Unexpected $ref_type element,"
+  }
+
+  foreach my $key ( keys %$x) {
+
+    next if ($key eq "centos");
+    next if ($key eq "command");
+    next if ($key eq "commands");
+    next if ($key eq "direct");
+    next if ($key eq "gui");
+    next if ($key eq "image");
+    next if ($key eq "implicit");
+    next if ($key eq "java");
+    next if ($key eq "tty");
+    next if ($key eq "version");
+
+    die "Unexpected key <<$key>>,";
+  }
+
+  my $chunk_direct = defined($x->{direct}) ? bool($x->{direct}) : FALSE;
+  my $chunk_image = $x->{image};
+
+  if ( !$chunk_direct && !defined($chunk_image) ) {
+    die "Neither 'direct' nor 'image' is specified,";
+  }
+  if ( $chunk_direct && defined($chunk_image) ) {
+    die "Both 'direct' and 'image' are specified,";
+  }
+
+  my $chunk_version = $x->{version} || "latest";
+  my $chunk_gui =  $x->{gui} || "false";
+  my $chunk_tty =  $x->{tty} || "false";
+  my $chunk_java =  $x->{java} || "false";
+  my $chunk_centos =  $x->{centos} || "false";
+  my $chunk_implicit =  $x->{implicit} || "false";
+  my @chunk_commands = ();
+  if ( $x->{command} ) {
+    push @chunk_commands, $x->{command};
+  }
+  if ( $x->{commands} ) {
+    push @chunk_commands, @{$x->{commands}}
+  }
+
+  foreach my $y ( @chunk_commands ) {
+    my $command_name;
+    my $z;
+    my $ref_type = ref $y;
+    if ( !$ref_type ) {
+      $command_name = $y;
+      $z = {};
+    } elsif ( $ref_type eq "HASH" ) {
+      my ($name,$null) = keys %$y;
+      if (!defined($name) || defined($null)) {
+	die "Ill-formed command element,";
+      }
+      $command_name = $name;
+      $z = $y->{$name};
+    } else {
+      die "Unexpected $ref_type element,"
+    }
+
+    foreach my $key ( keys %$z) {
+
+      next if ($key eq "gui");
+      next if ($key eq "tty");
+      next if ($key eq "java");
+
+      die "Unexpected key <<$key>>,";
+    }
+
+    my $command_gui =  $z->{gui} || $chunk_gui;
+    my $command_tty =  $z->{tty} || $chunk_tty;
+    my $command_java =  $z->{java} || $chunk_java;
+
+    if ( defined($is_command{$command_name}) ) {
+      die "Duplicate command: $command_name,";
+    }
+
+    $is_command{$command_name} = TRUE;
+    $image_of{$command_name} = $chunk_image;
+    $version_of{$command_name} = $chunk_version;
+    $is_centos{$command_name} = bool($chunk_centos);
+    $is_implicit{$command_name} = bool($chunk_implicit);
+
+    $is_gui{$command_name} = bool($command_gui);
+    $is_tty{$command_name} = bool($command_tty);
+    $is_java{$command_name} = bool($command_java);
+  }
+}
+
+sub bool {
+  my ($s) = @_;
+  return TRUE if (lc($s) eq "true");
+  return FALSE if (lc($s) eq "false");
+  die "Unexpected boolean: <<$s>>,";
+}
+
+# ------------------------------------------------------------------------
+# Execute the command
+# ------------------------------------------------------------------------
+
+my @all_names = sort (keys(%is_command));
+
+if ( $opt_l ) {
+  do_list();
+} elsif ( $opt_p ) {
+  do_pull();
+} else {
+  do_exec();
+}
+
+sub do_list {
+  foreach my $name (@all_names) {
+    my $image = $image_of{$name};
+    my $version = $version_of{$name};
+    if (defined($image)) {
+      print "$name - $image:$version\n";
+    } else {
+      print "$name - (direct)\n";
+    }
+  }
+}
+;
+
+sub do_pull {
+  my @names;
+  foreach my $name ( @ARGV ) {
+    if ( $name eq "*" ) {
+      push @names, @all_names;
+    } else {
+      push @names, $name;
+    }
+  }
+  my %to_pull;
+  foreach my $name (@names) {
+    my $image = $image_of{$name};
+    my $version = $version_of{$name};
+    if (defined($image)) {
+      $to_pull{$image.":".$version} = TRUE;
+    }
+  }
+
+  foreach my $image (sort(keys %to_pull)) {
+    run("docker","pull",$image);
+  }
+}
+
+sub do_exec {
+
+  my ($cmd_name,@cmd_args) = @ARGV;
+  my $image = $image_of{$cmd_name};
+  if ( !defined($image) ) {
+    run($cmd_name,@cmd_args);
+    return;
+  }
+  my $version = $version_of{$cmd_name};
+
+  my @args;
+  if ( $image =~ /^pvstodghill\// ) {
+    # Mount the current directory as container:/mnt
+    push @args, "-v", $ENV{PWD}.":/mnt";
+  }
+  if ( $is_centos{$cmd_name} ) {
+    # This may be questionable. need for centos?
+    push @args, "--user", $PID.":".$GID;
+  }
+
+  # Don't log. It fills the disk.
+  push @args, "--log-driver=none";
+  # Delete the container when finished.
+  push @args, "--rm";
+  # so piping commands work
+  push @args, "-i";
+  # run interactively
+  if ( $opt_s || $is_tty{$cmd_name} ) {
+    push @args, "-t"
+  }
+  # For Java commands, pass Java flags
+  if ( $is_java{$cmd_name} ) {
+    my $JVM_FLAGS=$ENV{JVM_FLAGS};
+    if ( defined($JVM_FLAGS) ) {
+      push @args, "-e", "\"JVM_FLAGS=$JVM_FLAGS\""
+    }
+  }
+  # For GUI commands, pass X11 flags
+  if ( $is_gui{$cmd_name} ) {
+    my $DISPLAY = $ENV{DISPLAY};
+    ( defined($DISPLAY) ) || die "GUI command, but \$DISPLAY is not set,";
+    if ( $OSNAME eq "linux" ) {
+      push @args, "-e", "DISPLAY=$DISPLAY";
+      push @args, "-v", "/tmp/.X11-unix:/tmp/.X11-unix";
+    } elsif ( $OSNAME eq "darwin" ) {
+      push @args, darwin_x11_args();
+    } else {
+      die "Cannot start GUI commands on <<$OSNAME>>,";
+    }
+  }
+
+  push @args, $image.":".$version;
+  
+  if ( $opt_s ) {
+    push @args, "/bin/bash";
+  } else {
+    if ( ! $is_implicit{$cmd_name} ) {
+      push @args, $cmd_name;
+    }
+    push @args, @cmd_args;
+  }
+
+  run("docker", "run", @args);
+}
+
+sub run {
+  diag(join(" ","++",@_));
+  my $stat = system(@_);
+  ($stat == 0) || die "system failed: $?,";
+}
+
+# ------------------------------------------------------------------------
+# Darwin specific hacks
+# ------------------------------------------------------------------------
+
+my $darwin_socat_pid;
+
+sub darwin_x11_args {
+  # fixme: hard coded path is ugly!
+  if ( ! -e "/usr/local/bin/socat" ) {
+    die "\"socat\" is required for GUI apps, but was not found.";
+  }
+
+  # Find an IP.
+  my $ip;
+  for (my $i=0; !defined($ip); $i++) {
+    open(my $fh, "-|", "ifconfig en$i 2>&1") || die;
+    while (<$fh>) {
+      chomp;
+      if ( /^ifconfig: interface en[0-9]+ does not exist/ ) {
+	die "Need an IP address to continue,";
+      }
+      if ( /^\tinet +([0-9.]+) +/ ) {
+	$ip = $1;
+	last;
+      }
+    }
+    close $fh;
+  }
+
+  # Start socat
+  use POSIX;
+  my $pid = fork();
+  if (!defined($pid)) {
+    die "cannot fork,";
+  }
+  if ( $pid == 0 ) {
+    # Child
+    my $DISPLAY = $ENV{DISPLAY};
+    close STDERR;
+    close STDOUT;
+    exec("socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CLIENT:\\\"$DISPLAY\\\"");
+    die "Whoops. This should never be reached,";
+  } else {
+    # Parent
+    diag("# starting socat, pid $pid");
+    $darwin_socat_pid = $pid;
+    sleep 1;			# fixme: ugly hack.
+    return ("-e", "DISPLAY=$ip:0");
+  }
+}
+
+# fixme: should recognize when socat dies.
+
+
+sub darwin_x11_cleanup {
+  # Shutdown socat
+  my $pid = $darwin_socat_pid;
+  if (!defined($pid)) { return; }
+  diag("# stopping socat, pid $pid");
+  kill 'QUIT', $pid;
+  wait(); # fixme: is this safe?
+}
+
+sub diag {
+  if ( $opt_q ) { return; }
+  print STDERR @_,"\n";
+}
+
+END {
+  # fixme: is this safe?
+  darwin_x11_cleanup();
+}

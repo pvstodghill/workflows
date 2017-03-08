@@ -1,0 +1,88 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+our $opt_v = 0;
+if ( defined($ARGV[0]) && $ARGV[0] eq "-v" ) {
+  $opt_v = 1;
+  shift @ARGV;
+}
+
+my $op = shift @ARGV;
+my $first = shift @ARGV;
+if ( !defined($first) ) {
+  print STDERR "Usage: $0 [-v] OP PROFILE [PROFILE ...] > PROFILE\n";
+  exit 1;
+}
+
+sub plus { return $_[0] + $_[1]; }
+sub minus { return $_[0] - $_[1]; }
+sub min { if ($_[0] < $_[1]) { return $_[0]; } else {  return $_[1]; } }
+sub max { if ($_[0] > $_[1]) { return $_[0]; } else {  return $_[1]; } }
+my $f;
+if ($op eq "+") {
+  $f = \&plus;
+} elsif ($op eq "-") {
+  $f = \&minus;
+} elsif ($op eq "min") {
+  $f = \&min;
+} elsif ($op eq "max") {
+  $f = \&max;
+} else {
+  print STDERR "Unknown op: $op\n";
+  exit 1;
+}
+
+my @cols = ();
+my $n;
+my $m = 0;
+if ( $opt_v ) {
+  print STDERR "# Reading $first\n";
+}
+open(F,"<$first") || die "Can't open $first,";
+while (<F>) {
+  chomp;
+  my @row = split(/[ \t]+/);
+  if (!defined($n)) {
+    $n = $#row + 1;
+    for (my $j=0; $j<$n; $j++) {
+      push @cols, [];
+    }
+  }
+  for (my $j=0; $j<$n; $j++) {
+    push @{$cols[$j]}, $row[$j];
+  }
+  $m++;
+}
+close F;
+
+foreach my $next ( @ARGV ) {
+  my $i = 0;
+  if ( $opt_v ) {
+    print STDERR "# Reading $next\n";
+  }
+  open(F,"<$next") || die "Can't open $next";
+  while (<F>) {
+    chomp;
+    my @row = split(/[ \t]+/);
+    for (my $j=0; $j<$n; $j++) {
+      my $x = ${$cols[$j]}[$i];
+      $x = &$f($x, $row[$j]);
+      ${$cols[$j]}[$i] = $x;
+    }
+    $i++;
+  }
+  close F;
+}
+
+for (my $i=0; $i<$m; $i++) {
+  for (my $j=0; $j<$n; $j++) {
+    if (0 < $j) {
+      print " ";
+    }
+    print ${$cols[$j]}[$i];
+  }
+  print "\n";
+}
+

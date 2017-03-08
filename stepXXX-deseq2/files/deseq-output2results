@@ -1,0 +1,39 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+use Carp::Always;
+
+use constant { TRUE => 1, FALSE => 0 };
+
+while (<STDIN>) {
+  chomp;
+  my @F = split(/\t/);
+  if ( $. == 1 ) {
+    for (my $i=0; $i<=$#F; $i++) {
+      $F[$i] =~ s/^\"//;
+      $F[$i] =~ s/\"$//;
+    }
+    if ($F[0] eq "baseMean") {
+      unshift @F, "Row.names";
+    }
+    if ($F[0] eq "Row.names" ) {
+      shift @F;
+      @F = ("start","end","strand","locus","gene", @F);
+    }
+  } else {
+    my $s = shift @F;
+    ($s =~ /^\"([0-9]+)\.\.([0-9]+)\/([+-])(.*)\"/) || die;
+    my ($start,$end,$strand,$rest) = ($1,$2,$3,$4);
+    my ($locus,$gene);
+    if ( $rest =~ /^\((.*)\/(.*)\)$/ ) {
+      ($locus,$gene) = ($1,$2);
+    } elsif ( $rest =~ /^\((.*)\)$/ ) {
+      ($locus,$gene) = ($1,$1);
+    } else {
+      ($locus,$gene) = ("","");
+    }
+    @F = ($start,$end,$strand,$locus,$gene, @F);
+  }
+  print join("\t",@F),"\n";
+}
