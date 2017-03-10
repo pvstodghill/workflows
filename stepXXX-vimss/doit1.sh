@@ -23,14 +23,5 @@ wget -O results/genes.txt \
      "http://www.microbesonline.org/cgi-bin/genomeInfo.cgi?tId=${SOURCE_ID};export=tab"
 wget -O results/named.txt \
      "http://www.microbesonline.org/operons/gnc${SOURCE_ID}.named"
-# wget -O results/scores.txt \
-#      "http://www.microbesonline.org/operons/gnc${SOURCE_ID}.scores"
-
-
-# ------------------------------------------------------------------------
-# Convert to GFF
-# ------------------------------------------------------------------------
-
-./files/make-vimss.pl results/genes.txt results/named.txt > results/vimss.gff
-
-./files/split-gff -d results vimss < results/vimss.gff
+wget -O results/scores.txt \
+     "http://www.microbesonline.org/operons/gnc${SOURCE_ID}.scores"

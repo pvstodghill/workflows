@@ -3,6 +3,25 @@
 use strict;
 use warnings;
 
+use FindBin;
+
+
+my %accession_of;
+my $scaffolds_file = $FindBin::Bin."/scaffolds.txt";
+open(my $fh, "<", $scaffolds_file) || die "Cannot open <<$scaffolds_file>>,";
+while ( <$fh> ) {
+  chomp;
+  my ($accession,$scaffoldId,$empty) = split(" ");
+  (defined($scaffoldId) && !defined($empty)) ||
+    die "Ill-formed scaffold line, <<$_>>,";
+  if ( $accession eq "accession" ) { next; }
+  $accession_of{$scaffoldId} = $accession;
+}
+close $fh;
+
+# ------------------------------------------------------------------------
+
+
 my ($genes_file,$named_file) = @ARGV;
 if (!defined($named_file)) {
   print STDERR "Usage $0 foo.genes foo.named > foo.gff\n";
@@ -14,18 +33,16 @@ if (!defined($named_file)) {
 
 my %loc;
 
-open(F, "<$genes_file") || die;
+open(F, "<", $genes_file) || die "Cannot open <<$genes_file>>,";
 while (<F>) {
   chomp;
   my ($locusId,$accession_Protein,$GI,$scaffoldId,$start,$stop,$strand,
       $sysName,$name,$desc,$COG,$COGFun,$COGDesc,$TIGRFam,
       $TIGRRoles,$GO,$EC,$ECDesc) = split(/\t/);
   if ( $locusId eq "locusId" ) { next; }
-  my $accession;
-  $accession = "NC_004578" if ( $scaffoldId == 236 );
-  $accession = "NC_004632" if ( $scaffoldId == 7186 );
-  $accession = "NC_004633" if ( $scaffoldId == 7185 );
-  (defined($accession)) || die;
+  my $accession = $accession_of{$scaffoldId};
+  (defined($accession))
+    || die "Update <<$scaffolds_file>> for scaffoldId=<<$scaffoldId>>,";
   my ($begin,$end);
   ($begin,$end) = ($start,$stop) if ( $strand eq "+");
   ($begin,$end) = ($stop,$start) if ( $strand eq "-");
@@ -41,7 +58,7 @@ close F;
 my %upstream; # ($upstream{A} == B) === B upstream of A
 my %downstream;
 
-open(F, "<$named_file") || die;
+open(F, "<", $named_file) || die "Cannot open <<$named_file>>,";
 while (<F>) {
   chomp;
   my ($Gene1,$Gene2,$SysName1,$SysName2,$Name1,$Name2,
