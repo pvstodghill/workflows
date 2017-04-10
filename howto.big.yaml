@@ -319,6 +319,34 @@ commands:
   - Mauve: { gui: true }
 
 ---
+image: pvstodghill/ncbi-blast
+version: 2.6.0plus__2017-04-05
+commands:
+  - blast_formatter
+  - blastdb_aliastool
+  - blastdbcheck
+  - blastdbcmd
+  - blastn
+  - blastp
+  - blastx
+  - convert2blastmask
+  - deltablast
+  - dustmasker
+  - legacy_blast.pl
+  - makeblastdb
+  - makembindex
+  - makeprofiledb
+  - psiblast
+  - rpsblast
+  - rpstblastn
+  - segmasker
+  - tblastn
+  - tblastx
+  - update_blastdb.pl
+  - windowmasker
+
+
+---
 image: pvstodghill/openms
 version: 2.1.0__2017-01-27
 commands:
