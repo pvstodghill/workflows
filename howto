@@ -239,6 +239,9 @@ sub do_pull {
 sub do_exec {
 
   my ($cmd_name,@cmd_args) = @ARGV;
+  if (!defined($cmd_name)) {
+    usage(1);
+  }
   my $image = $image_of{$cmd_name};
   if ( !defined($image) ) {
     run($cmd_name,@cmd_args);
