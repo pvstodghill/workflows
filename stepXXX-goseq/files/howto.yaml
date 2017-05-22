@@ -1,6 +1,6 @@
 ---
 image: pvstodghill/goseq
-version: 1.26.0__2017-02-17
+version: 1.28.0__2017-05-16
 commands: [ Rscript ]
 
 # ---
