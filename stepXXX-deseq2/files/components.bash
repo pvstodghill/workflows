@@ -1,5 +1,5 @@
 export RESULTS=results
-HOWTO="./howto -f ./files/howto.yaml -q"
+HOWTO="../howto -f ./files/howto.yaml -q"
 
 # ------------------------------------------------------------------------
 
