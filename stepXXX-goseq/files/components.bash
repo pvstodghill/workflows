@@ -1,5 +1,5 @@
 export RESULTS=results
-HOWTO="./howto -f ./files/howto.yaml -q"
+HOWTO="../howto -f ./files/howto.yaml -q"
 
 # ------------------------------------------------------------------------
 
@@ -14,8 +14,7 @@ function reset_results
 function notice_deseq2_regions
 {
     echo 1>&2 "# ${FUNCNAME[0]} $*"
-    deseq2_dir="$1" ; shift 1
-    regions_gff=$deseq2_dir/regions.gff
+    regions_gff=$1 ; shift 1
     regions_tag=locus_tag
     cp $regions_gff $RESULTS/genes.gff
     cat $RESULTS/genes.gff \
@@ -61,16 +60,36 @@ function notice_deseq2_regulon
 
 # ------------------------------------------------------------------------
 
+# run_goseq_once ${RESULTS}/regulon.txt strict -q 0.01
+function run_goseq_once
+{
+    echo 1>&2 "# ${FUNCNAME[0]} $*"
+    orig_regulon_txt=$1 ; shift 1
+    label=$1 ; shift 1
+
+    name=`basename $orig_regulon_txt .txt`
+    safe_regulon_txt=${RESULTS}/$name.txt
+    output_txt=${RESULTS}/$name.${label}.tsv
+
+    if [ ! \( $orig_regulon_txt -ef $safe_regulon_txt \) ] ; then
+	cp $orig_regulon_txt $safe_regulon_txt
+    fi
+
+    $HOWTO Rscript ./files/run-goseq.R "$@" \
+	   ${RESULTS}/genes_assayed.txt \
+	   ${RESULTS}/genes_lengths.txt \
+	   $safe_regulon_txt \
+	   ${RESULTS}/go-funcs.txt \
+	   > $output_txt
+}
+
 function run_goseq
 {
     echo 1>&2 "# ${FUNCNAME[0]} $*"
     label=$1 ; shift 1
 
     for x in "" _up _down ; do
-	$HOWTO Rscript ./files/run-goseq.R "$@" \
-	       ${RESULTS}/genes_assayed.txt ${RESULTS}/genes_lengths.txt \
-	       ${RESULTS}/regulon${x}.txt ${RESULTS}/go-funcs.txt \
-	       > ${RESULTS}/results${x}.${label}.tsv
+	run_goseq_once ${RESULTS}/regulon${x}.txt "$@"
     done
 }
 
