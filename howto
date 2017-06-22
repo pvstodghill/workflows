@@ -250,13 +250,14 @@ sub do_exec {
   my $version = $version_of{$cmd_name};
 
   my @args;
-  if ( $image =~ /^pvstodghill\// ) {
+  if ( $image =~ /^pvstodghill\// || $image eq "scratch" ) {
     # Mount the current directory as container:/mnt
     push @args, "-v", $ENV{PWD}.":/mnt";
   }
   if ( $is_centos{$cmd_name} ) {
     # This may be questionable. need for centos?
-    push @args, "--user", $PID.":".$GID;
+    #push @args, "--user", $PID.":".$GID; # <- GID is a list
+    push @args, "--user", $PID;
   }
 
   # Don't log. It fills the disk.
