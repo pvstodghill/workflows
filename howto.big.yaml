@@ -511,7 +511,7 @@ commands:
 
 ---
 image: pvstodghill/peptideshaker
-version: 1.15.0__2017-02-01
+version: 1.16.11__2017-06-23
 java: true
 commands:
   - FollowUpCLI
@@ -523,7 +523,7 @@ commands:
 
 ---
 image: pvstodghill/searchgui
-version: 3.2.6__2017-02-01
+version: 3.2.20__2017-06-23
 java: true
 commands:
   - FastaCLI
