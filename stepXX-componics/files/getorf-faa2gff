@@ -1,0 +1,50 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+#use Carp::Always;
+
+use constant { TRUE => 1, FALSE => 0 };
+
+my $source = "getorf";
+my $feature = "misc_feature";
+my $score = ".";
+my $frame = "0";
+
+print "##gff-version 3\n";
+
+while (<STDIN>) {
+  if ( !/^>/ ) {
+    next;
+  }
+  ( /^>([^.]+)\.([0-9]+_[0-9]+) \[([0-9]+) - ([0-9]+)\] +(.*)/ )
+    || die;
+  my ($seqname,$id,$start,$end,$rest) = ($1,$2,$3,$4,$5);
+
+  my $strand= "+";
+  if ( $rest =~ /^\(REVERSE SENSE\) +(.*)/ ) {
+    ($strand,$rest) = ("-",$1);
+    ($start,$end) = ($end,$start);
+  }
+
+  # Add the stop codon
+  if ($strand eq "+") {
+    $end += 3;
+  } elsif ($strand eq "-") {
+    $start -= 3;
+  }
+
+  my $cross = FALSE;
+  if ( $rest =~ /^\(ORF crosses the breakpoint\) +(.*)/ ) {
+    ($cross,$rest) = (TRUE,$1);
+  }
+
+  my $attributes = "name=$seqname.$id";
+  if ($cross) {
+    $attributes .= ";cross=true";
+  }
+
+  print join("\t",$seqname,$source,$feature,$start,$end,
+	     $score,$strand,$frame,$attributes),"\n";
+
+}

@@ -1,0 +1,83 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings FATAL => 'all';
+use Carp::Always;
+
+# use FindBin;
+# use lib "$FindBin::Bin";
+# use Xyzzy;
+
+use constant { TRUE => 1, FALSE => 0 };
+
+# ------------------------------------------------------------------------
+
+my ($faa_file,@gff_files) = @ARGV;
+
+if (!defined($faa_file)) {
+  print STDERR "Usage: $0 proteome.faa annotations1.gff ... > annotated_proteom.faa\n";
+  exit(1);
+}
+
+# ----------------------------------------------------------------------------------
+
+my %descr;
+
+foreach my $gff_file ( @gff_files ) {
+  my %product_of_accession;
+  my %gene_of_accession;
+  my %name_of_gene;
+  open(my $gff_fh, "<", $gff_file) || die;
+  while (<$gff_fh>) {
+    if ( /^#/ ) {
+      next;
+    }
+    chomp;
+    my ($seqname,$source,$feature,$start,$end,
+	$score,$strand,$frame,$attributes) = split(/\t/,$_);
+    if ( $feature eq "CDS") {
+      ( $attributes =~ /(^|;)Parent=([^;]+)/ ) || die;
+      my $gene = $2;
+      ( $attributes =~ /(^|;)protein_id=([^;]+)/ ) || die;
+      my $accession = $2;
+      ( $attributes =~ /(^|;)product=([^;]+)/ ) || die;
+      my $product = $2;
+      $gene_of_accession{$accession} = $gene;
+      $product =~ s/'/&amp;/g;
+      $product_of_accession{$accession} = $product;
+    } elsif ( $feature eq "gene") {
+      ( $attributes =~ /(^|;)ID=([^;]+)/ ) || die;
+      my $gene = $2;
+      ( $attributes =~ /(^|;)Name=([^;]+)/ ) || die;
+      my $name = $2;
+      ( $attributes =~ /(^|;)locus_tag=([^;]+)/ ) || die;
+      my $locus_tag = $2;
+      if ( $name eq $locus_tag ) {
+	$name_of_gene{$gene} = $name;
+      } else {
+	$name_of_gene{$gene} = "$name ($locus_tag)";
+      }
+    }
+  }
+  close $gff_fh;
+  foreach my $accession (keys %gene_of_accession) {
+    my $gene = $gene_of_accession{$accession};
+    my $product = $product_of_accession{$accession};
+    my $name = $name_of_gene{$gene};
+    $descr{$accession} = "$name - $product";
+  }
+}
+
+# ----------------------------------------------------------------------------------
+
+open(my $faa_fh, "<", $faa_file) || die;
+while (<$faa_fh>) {
+  if ( /^>([^ ]+)/ ) {
+    my $accession = $1;
+  my $descr = $descr{$accession} || "";
+    print ">generic|$accession|$descr\n";
+  } else {
+    print;
+  }
+}
+close $faa_fh;

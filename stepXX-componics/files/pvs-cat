@@ -1,0 +1,17 @@
+#! /bin/bash
+
+set -e
+
+for f in "$@" ; do
+    if [ -r "$f" ] ; then
+	case "$f" in
+	    # the order of the tests matters
+	    *.tar.gz) tar zxOf "$f" ;;
+	    *.tar.bz2) tar jxOf "$f" ;;
+	    *.gz) gunzip -c "$f" ;;
+	    *.bz2) bunzip2 -c "$f" ;;
+	    *) cat "$f"
+	esac
+    fi
+done
+

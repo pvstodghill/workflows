@@ -1,0 +1,86 @@
+#! /bin/bash
+
+set -e
+
+PROGNAME=`basename $0`
+ROOT=`dirname $0`
+
+function usage {
+    echo 1>&2 "Usage: $PROGNAME [options] [file.fna ...]"
+    echo 1>&2 "-f FILE - write FAA to FILE"
+    echo 1>&2 "-g FILE - write GFF to FILE"
+    echo 1>&2 "-h - this message"
+    echo 1>&2 "-s N - min orf size of N"
+    echo 1>&2 "one or both of -f or -g must be specified."
+    exit "$@"
+}    
+
+opt_s=0
+while getopts 'f:g:hs:' opt ; do
+    case "$opt" in
+	f) opt_f="$OPTARG" ;;
+	g) opt_g="$OPTARG" ;;
+	h) opt_h=1 ;;
+	s) opt_s="$OPTARG" ;;
+	\?) usage 1 ;;
+	*) echo "Can't happen" ; exit 1 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ "$opt_h" ] ; then
+    usage
+fi
+if [ -z "$opt_f" -a -z "$opt_g" ] ; then
+    usage 1
+fi
+
+faa_file=`mktemp $PROGNAME.XXX.faa`
+function cleanup {
+    rm -f $faa_file
+}
+trap cleanup EXIT
+
+
+cat "$@" \
+    | ${HOWTO} getorf -circular Y -minsize $opt_s -sequence /dev/stdin \
+	     -outseq /dev/stdout 2>/dev/null \
+	     > $faa_file
+if [ $? != 0 ] ; then
+    echo 1>&2 getorf failed. check input.
+    if [ "$faa_temp" ] ; then
+	rm -f $faa_file
+    fi
+    exit 1
+fi
+    
+
+function cleaned_faa {
+    cat $faa_file | sed -r -e 's/^(>[^ ]+) .*/\1/'
+}
+    
+if [ "$opt_f" = "-" ] ; then
+    cleaned_faa
+elif [ "$opt_f" ] ; then
+    cleaned_faa > $opt_f
+fi
+
+if [ "$opt_g" ] ; then
+
+    if [ -z "$opt_g" ] ; then
+	gff_file=`mktemp $PROGNAME.XXX.gff`
+	gff_temp=1
+    elif [ "$opt_g" = "-" ] ; then
+	gff_file=/dev/stdout
+    else
+	gff_file="$opt_g"
+    fi
+
+    cat $faa_file | $ROOT/getorf-faa2gff > $gff_file
+
+    if [ "$gff_temp" ] ; then
+	rm -f $gff_file
+    fi
+fi
+
+
