@@ -159,6 +159,13 @@ function add_spectra {
 		cp "$1" $OUT_PATH
 	    )
 	    ;;
+	*.mgf.gz)
+	    (
+		PS4='++ '
+		set -x
+		gunzip -c "$1" > $OUT_PATH
+	    )
+	    ;;
 	*)
 	    echo 1>&2 "Do not know how to handle $1"
 	    exit 1
