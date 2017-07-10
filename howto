@@ -19,6 +19,7 @@ our $opt_l;
 our $opt_p;
 our $opt_q;
 our $opt_s;
+our $opt_v;
 
 sub usage {
   my $progname = basename($0);
@@ -31,13 +32,14 @@ sub usage {
   print STDERR "-h - print help\n";
   print STDERR "-l - list known commands and images\n";
   print STDERR "-p - pull packages\n";
-  print STDERR "-q - quiet. don't print disagnostics.\n";
+  print STDERR "-q - obsolete.\n";
   print STDERR "-s - open a shell instead of running the command\n";
+  print STDERR "-v - be verbose\n";
 
   exit(@_);
 }
 
-my $stat = getopts('f:hlpqs');
+my $stat = getopts('f:hlpqsv');
 if (!$stat) {
   usage(1);
 }
@@ -375,7 +377,7 @@ sub darwin_x11_cleanup {
 }
 
 sub diag {
-  if ( $opt_q ) { return; }
+  if ( !$opt_v ) { return; }
   print STDERR @_,"\n";
 }
 
