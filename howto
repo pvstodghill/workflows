@@ -32,7 +32,7 @@ sub usage {
   print STDERR "-h - print help\n";
   print STDERR "-l - list known commands and images\n";
   print STDERR "-p - pull packages\n";
-  print STDERR "-q - obsolete.\n";
+  print STDERR "-q - quiet, suppress all output\n";
   print STDERR "-s - open a shell instead of running the command\n";
   print STDERR "-v - be verbose\n";
 
@@ -194,13 +194,17 @@ sub bool {
 
 my @all_names = sort (keys(%is_command));
 
+my $exit_stat;
 if ( $opt_l ) {
-  do_list();
+  $exit_stat = do_list();
 } elsif ( $opt_p ) {
-  do_pull();
+  $exit_stat = do_pull();
 } else {
-  do_exec();
+  $exit_stat = do_exec();
 }
+exit($exit_stat);
+
+# ------------------------------------------------------------------------
 
 sub do_list {
   foreach my $name (@all_names) {
@@ -212,8 +216,11 @@ sub do_list {
       print "$name - (direct)\n";
     }
   }
+  return 0;
 }
 ;
+
+# ------------------------------------------------------------------------
 
 sub do_pull {
   my @names;
@@ -234,9 +241,16 @@ sub do_pull {
   }
 
   foreach my $image (sort(keys %to_pull)) {
-    run("docker","pull",$image);
+    my $stat = run("docker","pull",$image);
+    if ( $stat != 0 ) {
+      return $stat;
+    }
   }
+
+  return 0;
 }
+
+# ------------------------------------------------------------------------
 
 sub do_exec {
 
@@ -246,10 +260,10 @@ sub do_exec {
   }
   my $image = $image_of{$cmd_name};
   if ( !defined($image) ) {
-    run($cmd_name,@cmd_args);
-    return;
+    return run($cmd_name,@cmd_args);
   }
   my $version = $version_of{$cmd_name};
+  my $image_version = $image.":".$version;
 
   my @args;
   if ( $image =~ /^pvstodghill\// || $image eq "scratch" ) {
@@ -293,7 +307,7 @@ sub do_exec {
     }
   }
 
-  push @args, $image.":".$version;
+  push @args, $image_version;
   
   if ( $opt_s ) {
     push @args, "/bin/bash";
@@ -304,13 +318,26 @@ sub do_exec {
     push @args, @cmd_args;
   }
 
-  run("docker", "run", @args);
+  if (!$opt_q) {
+    print STDERR "### $image_version\n";
+  }
+
+  return run("docker", "run", @args);
 }
+
+# ------------------------------------------------------------------------
 
 sub run {
   diag(join(" ","++",@_));
   my $stat = system(@_);
-  ($stat == 0) || die "system failed: $?,";
+  # copied from perlfunc(1)
+  if ($? == -1) {
+    print STDERR "### failed to execute: $!\n";
+  } elsif ($? & 127) {
+    printf STDERR  "### child died with signal %d, %s coredump\n",
+      ($? & 127),  ($? & 128) ? 'with' : 'without';
+  }
+  return ($? >> 8);
 }
 
 # ------------------------------------------------------------------------
