@@ -1,4 +1,12 @@
 ---
+image: pvstodghill/art
+version: mountrainier20160605__2017-07-10
+commands:
+  - art_454
+  - art_SOLiD
+  - art_illumina
+
+---
 image: pvstodghill/bowtie2
 version: 2.2.9__2016-12-02
 commands:
@@ -33,6 +41,19 @@ commands:
   # - bowtie2-inspect-s-debug
   - breseq
   - gdtools
+
+---
+image: pvstodghill/comet
+version: 2016013__2017-07-11
+commands:
+  - comet.exe
+  
+---
+image: pvstodghill/curesim
+version: 1.3__2017-07-11
+java: true
+commands:
+  - CuReSim
 
 ---
 image: pvstodghill/emboss
@@ -326,6 +347,13 @@ commands:
   - Mauve: { gui: true }
 
 ---
+image: pvstodghill/nanosim
+version: 1.1.0__2017-07-12
+commands:
+  - read_analysis.py
+  - simulator.py
+
+---
 image: pvstodghill/ncbi-blast
 version: 2.6.0plus__2017-04-05
 commands:
@@ -517,6 +545,12 @@ commands:
   - XTandemAdapter
 
 ---
+image: pvstodghill/pbsim
+version: 1.0.3__2017-07-11
+commands:
+  - pbsim
+
+---
 image: pvstodghill/peptideshaker
 version: 1.16.11__2017-06-23
 java: true
@@ -527,6 +561,17 @@ commands:
   - PeptideShaker: { gui: true }
   - PeptideShakerCLI
   - ReportCLI
+
+---
+image: pvstodghill/percolator
+version: v3-01__2017-07-11
+commands:
+  - elude
+  - msgf2pin
+  - percolator
+  - qvality
+  - sqt2pin
+  - tandem2pin
 
 ---
 image: pvstodghill/searchgui
@@ -585,7 +630,7 @@ commands:
   - batchcoverage
   - calculate_pi
   - checkdb
-  - comet
+  # - comet
   - compareProts.pl
   - compareProts_ClusterHM.pl
   - cpanm
