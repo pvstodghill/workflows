@@ -585,6 +585,12 @@ commands:
   - SearchGUI: { gui: true }
 
 ---
+image: pvstodghill/ubuntu
+version: xenial
+commands:
+  - bash
+  
+---
 image: pvstodghill/tpp
 version: 5.0.0__2016-12-20
 centos: true
