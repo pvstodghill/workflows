@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use English;
+use Cwd 'abs_path';
 
 use constant { TRUE => 1, FALSE => 0 };
 
@@ -13,6 +14,7 @@ use constant { TRUE => 1, FALSE => 0 };
 use File::Basename;
 use Getopt::Std;
 
+our $opt_m = ".";
 our $opt_f;
 our $opt_h;
 our $opt_l;
@@ -31,6 +33,7 @@ sub usage {
   print STDERR "-f FILENAME - config file [./.howto.yaml or ~/.howto.yaml]\n";
   print STDERR "-h - print help\n";
   print STDERR "-l - list known commands and images\n";
+  print STDERR "-m DIR - mount directory tree DIR\n";
   print STDERR "-p - pull packages\n";
   print STDERR "-q - quiet, suppress all output\n";
   print STDERR "-s - open a shell instead of running the command\n";
@@ -39,13 +42,35 @@ sub usage {
   exit(@_);
 }
 
-my $stat = getopts('f:hlpqsv');
+my $stat = getopts('f:hlm:pqsv');
 if (!$stat) {
   usage(1);
 }
 if ($opt_h) {
   usage();
 }
+
+# ------------------------------------------------------------------------
+# Figure out mount and working directories
+# ------------------------------------------------------------------------
+
+my $mount_path = abs_path($opt_m);
+my $cwd_path = abs_path($ENV{PWD});
+
+if ( 0 != index($cwd_path,$mount_path) ) {
+  print STDERR "Mount dir must be a parent of the pwd.\n";
+  exit 1;
+}
+
+my @mount_stat_results = stat($mount_path);
+my $mount_uid = $mount_stat_results[4];
+
+if ( $mount_uid != $UID ) {
+  print STDERR "Mount dir must be owned by current user.\n";
+  exit 1;
+}
+
+my $cwd_suffix = substr($cwd_path,length($mount_path));
 
 # ------------------------------------------------------------------------
 # Read config file
@@ -268,7 +293,8 @@ sub do_exec {
   my @args;
   if ( $image =~ /^pvstodghill\// || $image eq "scratch" ) {
     # Mount the current directory as container:/mnt
-    push @args, "-v", $ENV{PWD}.":/mnt";
+    push @args, "-v", $mount_path.":/mnt";
+    push @args, "-w", "/mnt".$cwd_suffix;
   }
   if ( $is_centos{$cmd_name} ) {
     # This may be questionable. need for centos?
