@@ -574,6 +574,13 @@ commands:
   - tandem2pin
 
 ---
+image: pvstodghill/pyani
+version: 0.2.4__2017-08-18
+commands:
+  - average_nucleotide_identity.py
+  - genbank_get_genomes_by_taxon.py
+
+---
 image: pvstodghill/searchgui
 version: 3.2.20__2017-06-23
 java: true
