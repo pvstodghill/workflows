@@ -43,6 +43,19 @@ commands:
   - gdtools
 
 ---
+image: pvstodghill/clustalo
+version: 1.2.4__2017-09-08
+commands:
+  - clustalo
+
+---
+image: pvstodghill/clustalwx
+version: 2.1__2017-09-08
+commands:
+  - clustalw2
+  - clustalx: { gui: true }
+
+---
 image: pvstodghill/comet
 version: 2016013__2017-07-11
 commands:
@@ -344,7 +357,7 @@ version: 2015-02-13__2017-02-13
 commands:
   - mauveAligner
   - progressiveMauve
-  - Mauve: { gui: true }
+  - Mauve: { gui: true, java: true }
 
 ---
 image: pvstodghill/nanosim
