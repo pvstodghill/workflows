@@ -20,6 +20,7 @@ our $opt_h;
 our $opt_l;
 our $opt_p;
 our $opt_q;
+our $opt_t;
 our $opt_s;
 our $opt_v;
 
@@ -37,12 +38,13 @@ sub usage {
   print STDERR "-p - pull packages\n";
   print STDERR "-q - quiet, suppress all output\n";
   print STDERR "-s - open a shell instead of running the command\n";
+  print STDERR "-t - ensure a tty (do not use with piped io)\n";
   print STDERR "-v - be verbose\n";
 
   exit(@_);
 }
 
-my $stat = getopts('f:hlm:pqsv');
+my $stat = getopts('f:hlm:pqstv');
 if (!$stat) {
   usage(1);
 }
@@ -298,8 +300,8 @@ sub do_exec {
   }
   if ( $is_centos{$cmd_name} ) {
     # This may be questionable. need for centos?
-    #push @args, "--user", $PID.":".$GID; # <- GID is a list
-    push @args, "--user", $PID;
+    #push @args, "--user", $UID.":".$GID; # <- GID is a list
+    push @args, "--user", $UID;
   }
 
   # Don't log. It fills the disk.
@@ -309,8 +311,8 @@ sub do_exec {
   # so piping commands work
   push @args, "-i";
   # run interactively
-  if ( $opt_s || $is_tty{$cmd_name} ) {
-    push @args, "-t"
+  if ( $opt_s || $opt_t || $is_tty{$cmd_name} ) {
+    push @args, "-t";
   }
   # For Java commands, pass Java flags
   if ( $is_java{$cmd_name} ) {
@@ -334,9 +336,9 @@ sub do_exec {
   }
 
   push @args, $image_version;
-  
-  if ( $opt_s ) {
-    push @args, "/bin/bash";
+
+ if ( $opt_s ) {
+   push @args, "/bin/bash";
   } else {
     if ( ! $is_implicit{$cmd_name} ) {
       push @args, $cmd_name;
