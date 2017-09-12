@@ -12,3 +12,7 @@ cd `dirname $0`
 echo 1>&2 "Edit $0"
 exit 1
 
+set -x
+
+rm -rf results
+mkdir results
