@@ -1,4 +1,4 @@
-HOWTO="../howto -f ./files/howto.yaml -q"
+HOWTO="../howto -f ../howto.yaml -q"
 
 # ------------------------------------------------------------------------
 # Configuration variables

@@ -1,4 +1,4 @@
-export HOWTO="../howto -f ./files/howto.yaml -q"
+export HOWTO="../howto -f ../howto.yaml -q"
 
 function _ensure {
     for f in "$@" ; do
