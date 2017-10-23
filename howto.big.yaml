@@ -360,6 +360,18 @@ commands:
   - Mauve: { gui: true, java: true }
 
 ---
+image: pvstodghill/miniasm
+version: 40ec280__2017-10-19
+commands:
+  - miniasm
+  
+---
+image: pvstodghill/minimap
+version: fdf32ad__2017-10-19
+commands:
+  - minimap
+
+---
 image: pvstodghill/nanosim
 version: 1.1.0__2017-07-12
 commands:
@@ -592,6 +604,12 @@ version: 0.2.4__2017-08-18
 commands:
   - average_nucleotide_identity.py
   - genbank_get_genomes_by_taxon.py
+
+---
+image: pvstodghill/racon
+version: 0834442__2017-10-19
+commands:
+  - racon
 
 ---
 image: pvstodghill/searchgui
