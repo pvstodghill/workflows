@@ -8,7 +8,7 @@ commands:
 
 ---
 image: pvstodghill/bowtie2
-version: 2.2.9__2016-12-02
+version: 2.3.3.1__2017-10-31
 commands:
   - bowtie2
   - bowtie2-align-l
@@ -41,6 +41,21 @@ commands:
   # - bowtie2-inspect-s-debug
   - breseq
   - gdtools
+
+---
+image: pvstodghill/bwa
+version: 0.7.17__2017-10-31
+commands:
+  - bwa
+  - qualfa2fq.pl
+  - xa2multi.pl
+
+---
+image: pvstodghill/canu
+version: 1.6__2017-10-24
+java: true
+commands:
+  - canu
 
 ---
 image: pvstodghill/clustalo
@@ -597,6 +612,30 @@ commands:
   - qvality
   - sqt2pin
   - tandem2pin
+
+
+---
+image: pvstodghill/pilon
+version: 1.22__2017-10-31
+java: true
+commands:
+  - pilon
+  
+---
+image: pvstodghill/prokka
+version: 12547ca__2017-10-24
+commands:
+  - prokka
+  - prokka-biocyc_to_fasta_db
+  - prokka-build_kingdom_dbs
+  - prokka-cdd_to_hmm
+  - prokka-clusters_to_hmm
+  - prokka-genbank_to_fasta_db
+  - prokka-genpept_to_fasta_db
+  - prokka-hamap_to_hmm
+  - prokka-make_tarball
+  - prokka-tigrfams_to_hmm
+  - prokka-uniprot_to_fasta_db
 
 ---
 image: pvstodghill/pyani
