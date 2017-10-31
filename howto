@@ -14,6 +14,7 @@ use constant { TRUE => 1, FALSE => 0 };
 use File::Basename;
 use Getopt::Std;
 
+our $opt_c;
 our $opt_m = ".";
 our $opt_f;
 our $opt_h;
@@ -31,6 +32,7 @@ sub usage {
   print STDERR "Usage: $progname [options] -p cmd1 cmd2\n";
   print STDERR "Usage: $progname [options] -p '*'\n";
 
+  print STDERR "-c other_cmd - use image for other_cmd to run cmd\n";
   print STDERR "-f FILENAME - config file [./.howto.yaml or ~/.howto.yaml]\n";
   print STDERR "-h - print help\n";
   print STDERR "-l - list known commands and images\n";
@@ -44,7 +46,7 @@ sub usage {
   exit(@_);
 }
 
-my $stat = getopts('f:hlm:pqstv');
+my $stat = getopts('c:f:hlm:pqstv');
 if (!$stat) {
   usage(1);
 }
@@ -285,11 +287,14 @@ sub do_exec {
   if (!defined($cmd_name)) {
     usage(1);
   }
-  my $image = $image_of{$cmd_name};
+  my $cmd2_name = $cmd_name;
+  if ( $opt_c ) { $cmd2_name = $opt_c; }
+  
+  my $image = $image_of{$cmd2_name};
   if ( !defined($image) ) {
     return run($cmd_name,@cmd_args);
   }
-  my $version = $version_of{$cmd_name};
+  my $version = $version_of{$cmd2_name};
   my $image_version = $image.":".$version;
 
   my @args;
@@ -298,7 +303,7 @@ sub do_exec {
     push @args, "-v", $mount_path.":/mnt";
     push @args, "-w", "/mnt".$cwd_suffix;
   }
-  if ( $is_centos{$cmd_name} ) {
+  if ( $is_centos{$cmd2_name} ) {
     # This may be questionable. need for centos?
     #push @args, "--user", $UID.":".$GID; # <- GID is a list
     push @args, "--user", $UID;
@@ -311,18 +316,18 @@ sub do_exec {
   # so piping commands work
   push @args, "-i";
   # run interactively
-  if ( $opt_s || $opt_t || $is_tty{$cmd_name} ) {
+  if ( $opt_s || $opt_t || $is_tty{$cmd2_name} ) {
     push @args, "-t";
   }
   # For Java commands, pass Java flags
-  if ( $is_java{$cmd_name} ) {
+  if ( $is_java{$cmd2_name} ) {
     my $JVM_FLAGS=$ENV{JVM_FLAGS};
     if ( defined($JVM_FLAGS) ) {
       push @args, "-e", "\"JVM_FLAGS=$JVM_FLAGS\""
     }
   }
   # For GUI commands, pass X11 flags
-  if ( $is_gui{$cmd_name} ) {
+  if ( $is_gui{$cmd2_name} ) {
     my $DISPLAY = $ENV{DISPLAY};
     ( defined($DISPLAY) ) || die "GUI command, but \$DISPLAY is not set,";
     if ( $OSNAME eq "linux" ) {
@@ -340,7 +345,7 @@ sub do_exec {
  if ( $opt_s ) {
    push @args, "/bin/bash";
   } else {
-    if ( ! $is_implicit{$cmd_name} ) {
+    if ( ! $is_implicit{$cmd2_name} ) {
       push @args, $cmd_name;
     }
     push @args, @cmd_args;
