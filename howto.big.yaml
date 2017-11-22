@@ -669,84 +669,17 @@ commands:
   
 ---
 image: pvstodghill/tpp
-version: 5.0.0__2016-12-20
-centos: true
+version: 5.1.0__2017-11-13
 commands:
-  - ASAPRatioPeptideParser
-  - ASAPRatioProteinRatioParser
-  - ASAPRatioPvalueParser
-  - CombineOut
-  - CompactParser
-  - DatabaseParser
-  - DiscoFilter
-  - EnzymeDigestionParser
   - InterProphetParser
   - InteractParser
-  - Kojak
-  - Lib2HTML
-  - LibraPeptideParser
-  - LibraProteinRatioParser
-  - Mascot2XML
-  - Mayu.pl
-  - MzXML2Search
-  - Out2XML
-  - PTMProphetParser
-  - PeptideMapper
   - PeptideProphetParser
-  - ProphetModels.pl
-  - ProtProphModels.pl
   - ProteinProphet
-  - Q3ProteinRatioParser
-  - RTCalc
-  - RTCatalogParser
   - RefreshParser
-  - RespectParser
-  - SSRCalc3.par
-  - SSRCalc3.pl
-  - Sequest2XML
-  - Sqt2XML
-  - StPeter
-  - Tandem2XML
-  - XPressPeptideParser
-  - XPressProteinRatioParser
-  - add_mz
-  - batchcoverage
-  - calculate_pi
-  - checkdb
-  # - comet
-  - compareProts.pl
-  - compareProts_ClusterHM.pl
-  - cpanm
-  - createChargeFile.pl
-  - crypt
-  - decoyFASTA
-  - decoyFastaGenerator.pl
-  - digestdb
-  - dta2mzxml
-  - exporTPP.pl
-  - fileDownloader.pl
-  - get_prots.pl
-  - hardklor
+  - comet
   - idconvert
-  - indexmzXML
-  - mergeCharges.pl
   - msconvert
-  - out2summary
-  - pep_dbcount
-  - pepxmlcheck.pl
-  - plotspectrast
-  - qtofpeakpicker
-  - readmzXML
-  - renamedat.pl
-  - replaceall.pl
-  - spectrast
-  - subsetdb
   - tandem
-  - tpp_hostname
-  - tpp_models.pl
-  - tpptray.bat
-  - translateDNA2AA-FASTA
-  - updatepaths.pl
   - xinteract
 
 ---
@@ -755,3 +688,10 @@ version: 1.2.10__2017-02-02
 commands:
   - velvetg
   - velveth
+
+---
+image: pvstodghill/xtandem
+version: 17-02-01-4__2017-11-16
+commands:
+  - tandem.exe
+  
