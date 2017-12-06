@@ -676,6 +676,7 @@ commands:
   - PeptideProphetParser
   - ProteinProphet
   - RefreshParser
+  - Tandem2XML
   - comet
   - idconvert
   - msconvert
