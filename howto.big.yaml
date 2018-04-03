@@ -22,7 +22,7 @@ commands:
 
 ---
 image: pvstodghill/breseq
-version: 0.28.1__2016-12-09
+version: 0.32.0__2018-03-15
 commands:
   # - bowtie2
   # - bowtie2-align-l
@@ -82,6 +82,22 @@ version: 1.3__2017-07-11
 java: true
 commands:
   - CuReSim
+
+---
+image: pvstodghill/ea-utils
+version: 2017-06-20-bd148d4__2018-03-05
+commands:
+  - alc
+  - determine-phred
+  - fastq-clipper
+  - fastq-join
+  - fastq-mcf
+  - fastq-multx
+  - fastq-stats
+  - fastx-graph
+  - randomFQ
+  - sam-stats
+  - varcall
 
 ---
 image: pvstodghill/emboss
@@ -376,7 +392,7 @@ commands:
 
 ---
 image: pvstodghill/miniasm
-version: 40ec280__2017-10-19
+version: 9415d29__2018-03-27
 commands:
   - miniasm
   
@@ -385,6 +401,42 @@ image: pvstodghill/minimap
 version: fdf32ad__2017-10-19
 commands:
   - minimap
+
+---
+image: pvstodghill/minimap2
+version: 7938ed4__2018-03-27
+commands:
+  - minimap2
+
+---
+image: pvstodghill/mummer
+version: 3.23__2018-03-19
+commands:
+  - annotate
+  - combineMUMs
+  - delta-filter
+  - dnadiff
+  - exact-tandems
+  - gaps
+  - mapview
+  - mgaps
+  - mummer
+  - mummerplot
+  - nucmer
+  - nucmer2xfig
+  - postnuc
+  - postpro
+  - prenuc
+  - prepro
+  - promer
+  - repeat-match
+  - run-mummer1
+  - run-mummer3
+  - show-aligns
+  - show-coords
+  - show-diff
+  - show-snps
+  - show-tiling
 
 ---
 image: pvstodghill/nanosim
@@ -623,7 +675,7 @@ commands:
   
 ---
 image: pvstodghill/prokka
-version: 12547ca__2017-10-24
+version: 1.13__2018-03-27
 commands:
   - prokka
   - prokka-biocyc_to_fasta_db
@@ -646,9 +698,35 @@ commands:
 
 ---
 image: pvstodghill/racon
-version: 0834442__2017-10-19
+version: 1.2.0__2018-03-27
 commands:
   - racon
+
+---
+image: pvstodghill/samtools
+version: 1.7__2018-03-27
+commands:
+  - ace2sam
+  - blast2sam.pl
+  - bowtie2sam.pl
+  - export2sam.pl
+  - interpolate_sam.pl
+  - maq2sam-long
+  - maq2sam-short
+  - md5fa
+  - md5sum-lite
+  - novo2sam.pl
+  - plot-bamstats
+  - psl2sam.pl
+  - sam2vcf.pl
+  - samtools
+  - samtools.pl
+  - seq_cache_populate.pl
+  - soap2sam.pl
+  - varfilter.py
+  - wgsim
+  - wgsim_eval.pl
+  - zoom2sam.pl
 
 ---
 image: pvstodghill/searchgui
